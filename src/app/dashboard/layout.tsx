@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
-const navItems = [
+const baseNavItems = [
     { href: "/dashboard", label: "Overview", icon: "📊" },
     { href: "/dashboard/scores", label: "Scores", icon: "🏌️" },
     { href: "/dashboard/draws", label: "Draws", icon: "🎲" },
@@ -20,6 +20,7 @@ export default function DashboardLayout({
 }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userName, setUserName] = useState("");
+    const [isAdmin, setIsAdmin] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
@@ -32,14 +33,19 @@ export default function DashboardLayout({
             if (user) {
                 const { data: profile } = await supabase
                     .from("profiles")
-                    .select("full_name")
+                    .select("full_name, is_admin")
                     .eq("id", user.id)
                     .single();
                 setUserName(profile?.full_name || user.email || "");
+                setIsAdmin(profile?.is_admin || false);
             }
         };
         getUser();
     }, [supabase]);
+
+    const navItems = isAdmin
+        ? [...baseNavItems, { href: "/admin", label: "Admin Panel", icon: "🛠️" }]
+        : baseNavItems;
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -83,8 +89,8 @@ export default function DashboardLayout({
                                 href={item.href}
                                 onClick={() => setSidebarOpen(false)}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
-                                        ? "bg-primary/20 text-primary"
-                                        : "text-muted hover:text-foreground hover:bg-white/5"
+                                    ? "bg-primary/20 text-primary"
+                                    : "text-muted hover:text-foreground hover:bg-white/5"
                                     }`}
                             >
                                 <span className="text-lg">{item.icon}</span>
