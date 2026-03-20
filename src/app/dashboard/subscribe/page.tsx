@@ -50,7 +50,7 @@ export default function SubscribePage() {
 
             if (updateError) {
                 console.error("Subscription error:", updateError);
-                setError("Failed to subscribe. Please try again.");
+                setError(`Failed to subscribe: ${updateError.message} (Code: ${updateError.code})`);
             } else {
                 setStatus("active");
                 setSuccess(true);

@@ -55,6 +55,18 @@ CREATE TABLE IF NOT EXISTS public.winners (
 );
 
 -- =============================================
+-- Helper function for admin checks (avoids RLS recursion)
+-- =============================================
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND is_admin = true
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- =============================================
 -- Row Level Security (RLS) Policies
 -- =============================================
 
@@ -73,9 +85,7 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 
 -- Profiles: admins can view all profiles
 CREATE POLICY "Admins can view all profiles" ON public.profiles
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
+  FOR SELECT USING (public.is_admin());
 
 -- Scores: users can CRUD their own scores
 CREATE POLICY "Users can view own scores" ON public.scores
@@ -93,9 +103,7 @@ CREATE POLICY "Anyone can view draws" ON public.draws
 
 -- Draws: only admins can insert draws
 CREATE POLICY "Admins can insert draws" ON public.draws
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
+  FOR INSERT WITH CHECK (public.is_admin());
 
 -- Winners: users can view their own wins
 CREATE POLICY "Users can view own wins" ON public.winners
@@ -103,15 +111,11 @@ CREATE POLICY "Users can view own wins" ON public.winners
 
 -- Winners: admins can view all wins
 CREATE POLICY "Admins can view all wins" ON public.winners
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
+  FOR SELECT USING (public.is_admin());
 
 -- Winners: admins can insert wins
 CREATE POLICY "Admins can insert wins" ON public.winners
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
+  FOR INSERT WITH CHECK (public.is_admin());
 
 -- Charities: everyone can view charities
 CREATE POLICY "Anyone can view charities" ON public.charities
