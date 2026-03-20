@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SubscribePage() {
     const [status, setStatus] = useState<string>("free");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
-    const supabase = createClient();
+    const [error, setError] = useState<string | null>(null);
+    const supabase = useMemo(() => createClient(), []);
 
     useEffect(() => {
         const fetchStatus = async () => {
@@ -28,14 +29,18 @@ export default function SubscribePage() {
 
     const handleSubscribe = async () => {
         setLoading(true);
+        setError(null);
         try {
             const {
                 data: { user },
             } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                setError("You must be logged in to subscribe.");
+                return;
+            }
 
             // Mock Stripe - directly update subscription status
-            const { error } = await supabase
+            const { error: updateError } = await supabase
                 .from("profiles")
                 .update({
                     subscription_status: "active",
@@ -43,10 +48,16 @@ export default function SubscribePage() {
                 })
                 .eq("id", user.id);
 
-            if (!error) {
+            if (updateError) {
+                console.error("Subscription error:", updateError);
+                setError("Failed to subscribe. Please try again.");
+            } else {
                 setStatus("active");
                 setSuccess(true);
             }
+        } catch (err) {
+            console.error("Subscription error:", err);
+            setError("An unexpected error occurred. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -54,13 +65,17 @@ export default function SubscribePage() {
 
     const handleCancel = async () => {
         setLoading(true);
+        setError(null);
         try {
             const {
                 data: { user },
             } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                setError("You must be logged in.");
+                return;
+            }
 
-            const { error } = await supabase
+            const { error: updateError } = await supabase
                 .from("profiles")
                 .update({
                     subscription_status: "cancelled",
@@ -68,9 +83,15 @@ export default function SubscribePage() {
                 })
                 .eq("id", user.id);
 
-            if (!error) {
+            if (updateError) {
+                console.error("Cancel error:", updateError);
+                setError("Failed to cancel subscription. Please try again.");
+            } else {
                 setStatus("cancelled");
             }
+        } catch (err) {
+            console.error("Cancel error:", err);
+            setError("An unexpected error occurred.");
         } finally {
             setLoading(false);
         }
@@ -109,6 +130,14 @@ export default function SubscribePage() {
                         Unlock all features with a premium subscription
                     </p>
                 </div>
+
+                {/* Error message */}
+                {error && (
+                    <div className="glass-card p-4 mb-6 border-red-500/30 bg-red-500/10 flex items-center gap-3 animate-fade-in">
+                        <span className="text-2xl">❌</span>
+                        <p className="text-sm text-red-400">{error}</p>
+                    </div>
+                )}
 
                 {/* Current status */}
                 {status !== "free" && (
